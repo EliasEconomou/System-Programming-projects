@@ -1,0 +1,134 @@
+
+                +++++++++++++++
+                ++ ΕΝΟΤΗΤΑ 1 ++     -Γενικά
+                +++++++++++++++
+
+---------------------------------------------------------- Γενικά ----------------------------------------------------------
+--Ηλίας Οικονόμου - 1115201200133
+
+--Ύλοποίηση στα linux της σχολής μέσω ssh από το vscode.
+
+--Έχω υλοποιήσει όλες τις εντολές.
+
+--Compile/run info:
+
+            a) χρησιμοποιώντας το make.sh στον φάκελο programs ως εξής:
+
+    -   chmod 777 make.sh
+    -   ./make.sh               //compile
+    -   ./make.sh run           //compile και run με predefined arguments
+    -   ./make.sh clean         //clean τα object files και τα executables
+    -   ./make.sh valgrind      //compile και run χρησιμοποιώντας valgrind
+
+        ή   b) εκτελώντας τα 2 makefiles
+
+    -   cd programs/monitor && make && cd ../travelMonitor && make
+    πχ
+    -   ./travelMonitorClient -m 5 -b 201 -c 40 -s 100000 -i my_input_dir -t 10
+
+
+--Αρχεία:   |-->project2
+                |-->include/
+                |-->modules/
+                |-->input_dir/
+                |-->programs/
+                    |-->create_infiles.sh
+                    |-->make.sh
+                    |-->travelMonitorClient/
+                        |-->main.c
+                        |-->Makefile
+                        |-->log_files/                      //Όλα τα log files δημιουργούνται εδώ.
+                    |-->monitorServer/
+                        |-->main.c
+                        |-->Makefile
+                |-->records
+                |-->readme
+----------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+                +++++++++++++++     -Οι εντολές χρήστη
+                ++ ΕΝΟΤΗΤΑ 2 ++     -Threads
+                +++++++++++++++     
+
+----------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------- Οι εντολές χρήστη ----------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
+
+1)  /travelRequest
+Ίδια λογική με project2 - επικοινωνία μέσω socket.
+
+2)  /travelStats
+Ίδια λογική με project2 - επικοινωνία μέσω socket.
+
+3)  /addVaccinationRecords
+Το monitor κρατάει από πριν τον αριθμό των countries, οπότε γνωρίζει μέχρι ποιο country-x.txt file έχει διαβάσει αφού
+θα είναι x = num_countries. Έτσι αγνοεί όλα τα files με αριθμό <= του x αφού έχουν ήδη διαβαστεί, και διαβάζει μόνο τα
+καινούρια, ενημερώνοντας δομές και στέλνοντας bloom filters στον client για ενημέρωση.
+
+4)  /searchVaccinationStatus citizenID
+Ίδια λογική με project2 - επικοινωνία μέσω socket.
+
+5)  /exit
+Στέλνει ο client εντολή exit στους servers, τα περιμένει μέσω της wait να τερματίσουν τα threads τους, free τη μνήμη και
+εκτυπώσουν τα log files τους και ύστερα τερματίζει αφού εκτυπώσει το log file του με ανακατεύθυνση του stdout και free τη
+μνήμη του.
+
+
+----------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------- Threads -----------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
+
+Με σύμβουλο το producer-consumer πρόβλημα των διαφανειών του μαθήματος χρησιμοποίησα 1 mutex και 2 condition variables ώστε
+να μοιράζω τα paths στα threads και αυτά να διαβάζουν τα αρχεία, φράζοντας τον κυκλικό buffer και τις δομές για το current
+thread.
+Για τον exit των threads, αφού τα έχω όλα "κολλημένα" στο condition variable cond_nonempty του cyclic_mutex (αφού εκεί κλει-
+δώνουν όταν αδειάζει ο cyclic buffer) τους ειδοποιώ από το main-thread με την pthread_cond_signal ότι ο buffer δεν είναι
+άδειος (βάζοντας του "exit") και τερματίζουν ομαλά.
+
+----------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+--------------------------------------- Τα παρακάτω δε χρειάζονται για την κατανόηση ---------------------------------------
+
+                +++++++++++++++
+                ++ ΕΝΟΤΗΤΑ 3 ++     -Ενδεικτικές εκτελέσεις
+                +++++++++++++++
+
+---------------------------------------- Ενδεικτικές εκτελέσεις για τον my_input_dir ---------------------------------------
+
+1)
+-test
+/travelRequest 3989 30-06-1999 Peru Germany SARS-CoV        (ACCEPTED)
+/travelRequest 3989 01-01-2000 Peru Germany SARS-CoV        (REJECTED)
+
+/travelRequest 6821 24-10-1992 Mexico Greece Tetanus        (ACCEPTED)
+/travelRequest 6821 25-04-1993 Mexico Greece Tetanus        (REJECTED)
+
+/travelRequest 4287 01-12-1996 Spain Greece Influenza       (ACCEPTED)
+/travelRequest 4287 02-06-2005 Spain Greece Influenza       (REJECTED)
+
+
+/travelRequest 8888 30-06-1999 India Germany Measles        (REJECTED - not found)
+/travelRequest 7777 30-06-1999 India Germany Flu            (REJECTED - not found)
+
+2)
+/travelStats SARS-CoV 11-02-1990 11-06-2015 Germany
+/travelStats SARS-CoV 11-02-1990 11-06-2015
+/travelStats Tetanus 11-02-1992 11-06-2015 Greece
+/travelStats Tetanus 11-02-1990 11-06-2015
+
+
+3)
+/addVaccinationRecords India                    (Προσθήκη έξτρα αρχείου India-x.txt στον φάκελο India)
+
+4)
+/searchVaccinationStatus 0906
++ 0906 Bkl mSI Argentina 79 SARS-CoV NO
++ 0906 Bkl mSI Argentina 79 Ebola YES 16-10-2002
++ 0906 Bkl mSI Argentina 79 Influenza YES 13-03-2015
+
+----------------------------------------------------------------------------------------------------------------------------

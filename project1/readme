@@ -1,0 +1,199 @@
+------------------------------------------------------------------------------------------------------------------------
+
+Οικονόμου Ηλίας - 1115201200133
+Προγραμματισμός Συστήματος - Project 1
+
+----------------------------------------------------
+----------ΕΝΟΤΗΤΑ 1 - COMPILATION-ΕΚΤΕΛΕΣΗ----------
+----------------------------------------------------
+
+-Χρήση: cd program                                      //μετακίνηση στον directory που περιέχει script και makefile
+-Χρήση: ./testFile.sh virusesFile countriesFile 1000 0  //εκτέλεση του bash-script για 1000 records
+-Χρήση: make                                            //compile
+-Χρήση: make run                                        //compile and execute με προκαθορισμένα arguments
+-Χρήση: make clean                                      //καθάρισμα των object files/executables
+-Χρήση: make valgrind                                   //έλεγχος για memory leaks και errors
+-Χρήση: ./vaccineMonitor -c inputFile -b 100000         //εκτέλεση προγράμματος
+
+
+
+----------------------------------------------------
+----------ΕΝΟΤΗΤΑ 2 - ΡΟΗ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ----------
+----------------------------------------------------
+
+1) Έλεγχος ορισμάτων - αρχικοποιήσεις:
+-1 λίστα με τα bloom filters. <filter_list.c>
+-2 λίστες με τις skip lists: 'virus list yes' και 'virus list no'. <virus_list.c>
+-1 λίστα με τις countries. <country_list.c>
+-1 hash table για τις εγγραφές. <hash_table>
+        >>>>παρατήρηση:
+        >Οι δομές δημιουργούνται στο αντίστοιχο module, και στη main απλά καλούμε τις αντίστοιχες create, δεν 
+        μπορούμε να δημιουργήσουμε παραπάνω λίστες ή hash tables, ενώ το access σε αυτές γίνεται αποκλειστικά 
+        μέσω των συναρτήσεων στα header files και δεν μπορούμε να γνωρίζουμε στη main πως υλοποιήθηκαν.
+
+2) Διαβάζουμε γραμμή-γραμμή το inputFile κάνοντας τους εξής ελέγχους (αναφέρω τα πιθανά λάθη όπως εκτυπώνονται):
+-WRONG-AGE      - 0<age<120
+-YES-DATE       - yes δεν ακολουθείται από date
+-INVALID-DATE   - invalid format της date
+-CURRENT-DATE   - date > current date
+-NO-DATE        - no ακολουθείται από date
+
+3) Insert εγγραφής στο hash table "citizenID - firstName - lastName - age" ελέγχοντας (και απορρίπτοντας):
+-DUPLICATE-ID   - βρέθηκε προηγούμενη εγγραφή με ίδιο id και διαφορετικά τα υπόλοιπα στοιχεία
+-ID-VIRUS       - βρέθηκε προηγούμενη εγγραφή με ίδιο id και ίδιο virus
+
+4) Δημιουργία (αν δεν υπάρχει ήδη) της 'skip list' μέσα από την 'virus list yes' / 'virus list no', επιστροφή pointer 
+σε αυτή. 
+
+5) Kατόπιν insert στη skip list α) key, β) date και γ) country name.
+        >>>>παρατήρηση:
+        >Αν το date είναι NULL το πεδίο dateVaccinated γίνεται NULL και δε θα χρησιμοποιηθεί (δηλαδή θα είμαστε σε 
+        'no skip list').
+        >Το 'no' / 'yes' καθορίστηκε κατά τη δημιουργίας της skip list).
+
+6) Δημιουργία (αν δεν υπάρχει ήδη) της 'country - κόμβου' μέσα από τη skip list και επιστροφή στη skip list pointer
+προς τον κόμβο αυτόν. 
+
+7) Στον 'country - κόμβο' εισάγουμε τη skip list (αν δεν υπάρχει ήδη) σε ένα 'table_of_viruses' ('table of pointers to 
+skip lists'), το οποίο κρατάμε έτσι ώστε να έχουμε εύκολη πρόσβαση από τις χώρες στους ιούς που αφορούν την κάθε μια.
+        >>>>παρατήρηση:
+        >Ο κόμβος 'ενός id' μιας skip list θα έχει pointer στην country που τον αφορά και η country θα έχει pointer 
+        προς τη skip list αυτού του κόμβου (βλ. structures.png)
+
+8) Δημιουργία (αν δεν υπάρχει ήδη) του 'bloom filter' μέσα από τη filter list, επιστροφή pointer στο bloom filter
+και insert του id στο bloom filter.
+
+
+
+---------------------------------------------------------------------------
+----------ΕΝΟΤΗΤΑ 3 - EXTRA ΠΑΡΑΤΗΡΗΣΕΙΣ ΣΤΗ ΡΟΗ ΤΟΥ ΠΡΟΓΡΑΜΜΑΤΟΣ----------
+---------------------------------------------------------------------------
+
+1) Στη skip list δεν αποθηκεύω πουθενά pointer σε record. Για να ανακτήσω κάποιο record χρησιμοποιώ τη 'search_hash_table'.
+
+2) Στην αρχή του προγράμματος μετράω τις lines με την 'count_lines', για να έχω έναν "καλό" αριθμό από buckets στο
+hash table και αντίστοιχα για τον αριθμό των level στις skip list όπου στη 'χειρότερη περίπτωση' όλοι οι πολίτες αφορούν
+τον ίδιο ιό.
+
+3) Μέσα στο Hash Table κρατάω μόνο τα citizenID, firstName, lastName, age αφού τα virusName, isVaccinated, 
+dateVaccinated και pointer σε country τα αποθηκεύω στην αρμόδια skip list αποφεύγοντας έτσι τυχόν επανάληψη πληροφορίας.
+
+4) Στις skip list το level κόμβων καθορίζεται κατά το insert, ενώ την πιθανότητα αύξησης του level άφησα στο 25%.
+
+5)-Hash table βασισμένο σε γνώσεις από στατικό κατακερματισμό στο μάθημα 'Υλοποίηση Συστημάτων Βάσεων Δεδομένων'.
+  -Skip List βασισμένη σε σημειώσεις του κ. Δελή για το μάθημα 'Λειτουργικά Συστήματα'.
+  -Makefile βασισμένο σε σημειώσεις του κ. Χατζηκοκολάκη για το μάθημα 'Δομές Δεδομένων'.
+
+
+
+-----------------------------------------------------------
+----------ΕΝΟΤΗΤΑ 4 - ΕΚΤΕΛΕΣΗ ΕΝΤΟΛΩΝ ΑΠΟ ΧΡΗΣΤΗ----------
+-----------------------------------------------------------
+
+1) /vaccineStatusBloom
+        Χρησιμοποιώ το hash_table για να βεβαιωθώ ότι υπάρχει το id και τις skip lists που αφορούν τον virus, για να 
+        ελέγξω αν όντως υπάρχει ο ιός. Με την get_bloom_filter βρίσκω από τη filter_list το bloom filter που αφορά 
+        τον ιό και τσεκάρω με την check_bloom_filter το ζητούμενο.
+
+2) /vaccineStatus
+        Με 1 όρισμα given, χρησιμοποιώ την printid_virus_list όπου loopάρει τις skip lists και ψάχνει το given id.
+        Με 2, χρησιμοποιώ την get_date_skip_list ψάχνω με το given id την ημερομηνία του στις αρμόδιες skip lists. 
+        Αν δεν επιστραφεί ημερομηνία σημαίνει ότι βρισκόμουν σε 'no skip list' και άρα ο πολίτης δεν ήταν εμβολιασμένος.
+
+3) /populationStatus και /popStatusByAge
+        Ανάλογα με τα given cases που περιγράφω στην 'ενότητα 3 - παρατήρηση 2' χρησιμοποιώ τις εξής συναρτήσεις:
+        -cv_population_status και cvd_population_status όπου μετράω πλήθος πολιτών στις given skip lists χωρίς ή με
+        ημερομηνίες. Επιστρέφεται αριθμός στη main και εκεί υπολογίζεται και εκτυπώνεται το ποσοστό.
+        -v_population_status και vd_population_status όπου κάνω iterrate όλες τις χώρες-κόμβους χρησιμοποιώντας
+        τα table_of_viruses τους (βλ. ενότητα 2 - 7) και εκτυπώνω εκεί τα ποσοστά.
+        -Αναλόγως για το popStatusByAge όσες συναρτήσεις αφορούν iterrate των countries υλοποιούνται στην country list
+        και όσες αφορούν συγκεκριμένη χώρα στη skip_list.
+
+4) /insertCitizenRecord και /vaccinateNow
+        Σχεδόν ολόιδια υλοποίηση με την χρήση και έλεγχο των εγγραφών στην αρχή του προγράμματος. Επιπλέον
+        προσθήκη της remove_skip_list όταν πολίτης υπήρξε σε 'no skip list' και πρέπει να 'μετακινηθεί' στην
+        αντίστοιχη 'yes'. Όταν δοθούν από τον χρήστη μη υπάρχουσες countries ή virus, τις θεωρώ σωστές και
+        δημιουργώ τις αντίστοιχες δομές κανονικά (όπως ειπώθηκε και στο piazza).
+
+5) /list-nonVaccinated-Persons
+        Με την print_skip_list η οποία με τη σειρά της χρησιμοποιεί την search_hash_table (βλ. ενότητα 3 - 1) 
+        εκτυπώνει τις εγγραφές τις αρμόδιας skip list.
+
+6) /info
+        Δικιά μου προσθήκη κατά την οποία αν εκτελεσθεί εκτυπώνεται μια λίστα με τις διαθέσιμες εντολές - ορίσματα.
+
+
+
+-----------------------------------------------------------------------------
+----------ΕΝΟΤΗΤΑ 5 - ΠΑΡΑΤΗΡΗΣΕΙΣ ΣΤΗΝ ΕΚΤΕΛΕΣΗ ΕΝΤΟΛΩΝ ΑΠΟ ΧΡΗΣΤΗ----------
+-----------------------------------------------------------------------------
+
+1) Προσπάθησα να κάνω ελέγχους για όλα τα πιθανά input από το χρήστη, όπως:
+        -σωστό πλήθος ορισμάτων
+        -σωστές εντολές
+        -existing ids/viruses/countries κλπ
+
+2) Στα /populationStatus και /popStatusByAge υλοποιώ 4 διαφορετικές cases:
+        case                            όπου παίρνουμε αποτελέσματα για:           
+> country + virus (cv)          συγκεκριμένη χώρα και σε όλο το χρονικό εύρος,
+> country + virus + dates (cvd) συγκεκριμένη χώρα σε συγκεκριμένο χρονικό διάστημα,
+> virus (v)                     όλες τις χώρες και σε όλο το χρονικό εύρος,
+> virus + dates (vd)            όλες τις χώρες σε συγκεκριμένο χρονικό διάστημα
+
+3) Στο /popStatusByAge όταν δεν υπάρχει πολίτης για κάποια ηλικιακή ομάδα για μια συγκεκριμένη χώρα αντί να 
+εμφανίζεται 0.00% όπως ειπώθηκε στο piazza, εμφανίζω 'no citizen found'. Έτσι ξεχωρίζω τις ηλικίες που έχουν πολίτες 
+που δεν έχουν ΑΚΟΜΗ κάνει το εμβόλιο (0.00%) από τις ηλικίες που δεν έχουν καθόλου πολίτες.
+πχ
+Monaco
+0-20     0      no citizen found
+20-40    1      100.00%
+40-60    2      66.67%
+60+      0      0.00%
+
+
+
+---------------------------Τα παρακάτω είναι ενδεικτικά και δε χρειάζονται για την κατανόηση---------------------------
+
+------------------------------------------------------
+----------ΕΝΟΤΗΤΑ 6 - ΕΝΔΕΙΚΤΙΚΕΣ ΕΚΤΕΛΕΣΕΙΣ----------
+------------------------------------------------------
+
+--Ενδεικτικές εκτελέσεις για το my1000records:
+1)      /vaccineStatusBloom 8150 SARS-CoV2              2,3)    /vaccineStatus 0487 Ebola
+        /vaccineStatusBloom 0487 Ebola                          /vaccineStatus 0899 Rotavirus
+                                                                /vaccineStatus 0246
+                                                                /vaccineStatus 5881
+                                                        
+4)      --country virus dates
+        /populationStatus Belarus Ebola 11-02-2005 20-11-2020
+        --country virus
+        /populationStatus Belarus Ebola
+        --virus dates
+        /populationStatus SARS-CoV 11-02-2005 20-11-2020
+        --virus
+        /populationStatus H5N8
+
+5)      --country virus dates
+        /popStatusByAge Belarus Ebola 11-02-2005 20-11-2020
+        --country virus
+        /popStatusByAge Belarus Ebola
+        --virus dates
+        /popStatusByAge SARS-CoV 11-02-2005 20-11-2020
+        --virus
+        /popStatusByAge H5N8
+
+6)      /vaccineStatus 3415 Ebola                                                       //έχει vaccinated status = NO 
+        /insertCitizenRecord 3415 aEZYX HsHrbfK Austria 42 Ebola YES 21-02-2010         //τον κάνω insert
+        /vaccineStatus 3415 Ebola                                                       //έχει vaccinated status = YES-date
+        /insertCitizenRecord 3415 aEZYX HsHrbfK Austria 42 Ebola YES 20-02-2011         //προσπαθώ ξανά insert - αποτυγχάνω
+
+7)      /vaccineStatus 5505
+        /vaccinateNow 5505 KtG rwZGCl Ecuador 21 Hantavirus
+        /vaccineStatus 5505
+        /vaccinateNow 5505 KtG rwZGCl Ecuador 21 Hantavirus
+
+8)      /list-nonVaccinated-Persons Ebola
+
+
+
+------------------------------------------------------------------------------------------------------------------------
